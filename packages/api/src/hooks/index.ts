@@ -59,7 +59,9 @@ import useSendTypingIndicator from './useSendTypingIndicator';
 import useSetNotification from './useSetNotification';
 import useShouldSpeakIncomingActivity from './useShouldSpeakIncomingActivity';
 import useStartDictate from './useStartDictate';
+import useStartVoice from './useStartVoice';
 import useStopDictate from './useStopDictate';
+import useStopVoice from './useStopVoice';
 import useStyleOptions from './useStyleOptions';
 import useSubmitSendBox from './useSubmitSendBox';
 import useSuggestedActions from './useSuggestedActions';
@@ -71,7 +73,9 @@ import useTrackTiming from './useTrackTiming';
 import useUIState from './useUIState';
 import useUserID from './useUserID';
 import useUsername from './useUsername';
+import useVoiceRecordingMuted from './useVoiceRecordingMuted';
 import useVoiceSelector from './useVoiceSelector';
+import useVoiceState from './useVoiceState';
 
 export { useBuildRenderActivityCallback } from '@msinternal/botframework-webchat-api-middleware';
 export { useSuggestedActionsHooks } from '@msinternal/botframework-webchat-redux-store';
@@ -138,7 +142,9 @@ export {
   useSetNotification,
   useShouldSpeakIncomingActivity,
   useStartDictate,
+  useStartVoice,
   useStopDictate,
+  useStopVoice,
   useStyleOptions,
   useSubmitSendBox,
   useSuggestedActions,
@@ -150,5 +156,7 @@ export {
   useUIState,
   useUserID,
   useUsername,
-  useVoiceSelector
+  useVoiceRecordingMuted,
+  useVoiceSelector,
+  useVoiceState
 };

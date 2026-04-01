@@ -967,6 +967,20 @@ type StyleOptions = {
   speechRecognitionContinuous?: boolean | undefined;
 
   /**
+   * Whether part groups are open by default.
+   *
+   * @default true
+   */
+  partGroupDefaultOpen?: boolean | undefined;
+
+  /**
+   * Whether references (citation link definitions) are open by default.
+   *
+   * @default true
+   */
+  referenceListDefaultOpen?: boolean | undefined;
+
+  /**
    * Defines how activities are being grouped by (in the order of appearance in the array). Default to `['sender', 'status', 'part']` or `sender,status` in CSS.
    *
    * Values are key of result of `groupActivitiesMiddleware`. The default implementation of `groupActivitiesMiddleware` has `sender`, `status`, and `part`.
@@ -998,6 +1012,15 @@ type StyleOptions = {
    * New in 4.19.0.
    */
   disableFileUpload?: boolean;
+  /**
+   * Controls microphone button visibility in Fluent theme send box.
+   *
+   * - `'auto'` - Show microphone button if the chat adapter supports voice (has voiceConfiguration capability)
+   * - `'hide'` - Do not show microphone button regardless of adapter capabilities
+   *
+   * @default 'auto'
+   */
+  showMicrophoneButton?: 'auto' | 'hide';
 };
 
 // StrictStyleOptions is only used internally in Web Chat and for simplifying our code:

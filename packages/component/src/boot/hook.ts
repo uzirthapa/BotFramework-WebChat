@@ -59,7 +59,9 @@ export {
   useSetNotification,
   useShouldSpeakIncomingActivity,
   useStartDictate,
+  useStartVoice,
   useStopDictate,
+  useStopVoice,
   useStyleOptions,
   useSubmitSendBox,
   useSuggestedActions,
@@ -72,7 +74,9 @@ export {
   useUIState,
   useUserID,
   useUsername,
-  useVoiceSelector
+  useVoiceRecordingMuted,
+  useVoiceSelector,
+  useVoiceState
 } from 'botframework-webchat-api/hook';
 
 // #region Overrides

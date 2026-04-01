@@ -76,7 +76,9 @@ export {
   useShouldReduceMotion,
   useShouldSpeakIncomingActivity,
   useStartDictate,
+  useStartVoice,
   useStopDictate,
+  useStopVoice,
   useStyleOptions,
   useStyleSet,
   useSubmitSendBox,
@@ -94,7 +96,9 @@ export {
   useUIState,
   useUserID,
   useUsername,
+  useVoiceRecordingMuted,
   useVoiceSelector,
+  useVoiceState,
   useWebSpeechPonyfill,
   type SendBoxFocusOptions
 } from 'botframework-webchat-component/hook';

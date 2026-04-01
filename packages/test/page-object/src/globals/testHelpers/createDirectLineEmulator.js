@@ -40,6 +40,21 @@ export default function createDirectLineEmulator({ autoConnect = true, ponyfill 
 
   const postActivityCallDeferreds = [];
   const postActivity = outgoingActivity => {
+    // Auto-handle voice activities (continuous sending by mic) without requiring actPostActivity
+    // Voice activities are fire-and-forget and don't echo back
+    if (outgoingActivity.type === 'event' && outgoingActivity.name.includes('media')) {
+      const id = uniqueId();
+
+      return new Observable(observer => {
+        try {
+          observer.next(id);
+          observer.complete();
+        } catch (error) {
+          observer.error(error);
+        }
+      });
+    }
+
     const returnPostActivityWithResolvers = withResolvers();
 
     const deferred = postActivityCallDeferreds.shift();
@@ -106,15 +121,12 @@ export default function createDirectLineEmulator({ autoConnect = true, ponyfill 
   // Generic capabilities storage
   const capabilities = new Map();
 
-  // Helper to emit capabilitiesChanged event
+  // EventTarget for capability change notifications
+  const eventTarget = new EventTarget();
+
+  // Helper to dispatch capabilitieschanged event via EventTarget
   const emitCapabilitiesChangedEvent = () => {
-    activityDeferredObservable.next({
-      from: { id: 'bot', role: 'bot' },
-      id: uniqueId(),
-      name: 'capabilitiesChanged',
-      timestamp: getTimestamp(),
-      type: 'event'
-    });
+    eventTarget.dispatchEvent(new Event('capabilitieschanged'));
   };
 
   const directLine = {
@@ -140,6 +152,8 @@ export default function createDirectLineEmulator({ autoConnect = true, ponyfill 
         emitCapabilitiesChangedEvent();
       }
     },
+    addEventListener: eventTarget.addEventListener.bind(eventTarget),
+    removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
     end: () => {
       // This is a mock and will no-op on dispatch().
     },
@@ -184,6 +198,18 @@ export default function createDirectLineEmulator({ autoConnect = true, ponyfill 
           () => store.getState().activities.find(activity => activity.id === id),
           1000
         ));
+    },
+    emulateIncomingVoiceActivity: activity => {
+      activity = updateIn(activity, ['timestamp'], timestamp =>
+        typeof timestamp === 'number'
+          ? new Date(now + timestamp).toISOString()
+          : 'timestamp' in activity
+            ? timestamp
+            : getTimestamp()
+      );
+      activity = updateIn(activity, ['type'], type => type || 'event');
+
+      activityDeferredObservable.next(activity);
     },
     emulateOutgoingActivity: (activity, options) => {
       if (typeof activity === 'string') {

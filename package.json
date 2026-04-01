@@ -51,6 +51,7 @@
     "packages/directlinespeech",
     "packages/bundle",
     "packages/test/page-object",
+    "packages/test/test-assets",
     "packages/debug-theme",
     "packages/fluent-theme",
     "packages/vibe-grep"
@@ -63,7 +64,7 @@
     "build:html2-samples": "cd __tests__/html2/samples/ && esbuild --bundle --format=esm --outbase=. --outdir=./dist/ --minify **/*.tsx --splitting",
     "build:production": "npm run build --if-present --workspaces",
     "build-browser": "npm run build:run --workspace ./packages/test/harness",
-    "bump": "vg bump prod && vg bump dev && (npm audit fix || exit 0) && npm run bump:packages && npm run bump:samples",
+    "bump": "vg bump prod && vg bump dev && (npm audit fix || exit 0) && npm run bump:packages && npm run bump:samples && npm dedupe",
     "bump:dev": "PACKAGES_TO_BUMP=$(cat package.json | jq -r '(.pinDependencies // {}) as $P | (.localPeerDependencies // []) as $L | (.devDependencies // {}) | to_entries | map(select(.key as $K | $L | contains([$K]) | not)) | map(.key + \"@\" + ($P[.key] // [\"latest\"])[0]) | join(\" \")') && [ ! -z \"$PACKAGES_TO_BUMP\" ] && npm install $PACKAGES_TO_BUMP || true",
     "bump:prod": "PACKAGES_TO_BUMP=$(cat package.json | jq -r '(.pinDependencies // {}) as $P | (.localPeerDependencies // []) as $L | (.dependencies // {}) | to_entries | map(select(.key as $K | $L | contains([$K]) | not)) | map(.key + \"@\" + ($P[.key] // [\"latest\"])[0]) | join(\" \")') && [ ! -z \"$PACKAGES_TO_BUMP\" ] && npm install --save-exact $PACKAGES_TO_BUMP || true",
     "bump:packages": "npm run bump --workspaces",
@@ -222,6 +223,11 @@
       "strip-ansi@7 dropped support of CommonJS"
     ]
   },
+  "overrides": {
+    "adaptivecards": {
+      "swiper": "12.1.2"
+    }
+  },
   "devDependencies": {
     "@babel/plugin-transform-runtime": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
@@ -272,7 +278,6 @@
     "selenium-webdriver": "^4.39.0",
     "serve": "^14.2.5",
     "serve-handler": "^6.1.6",
-    "simple-git": "^3.30.0",
     "strip-ansi": "^6.0.1",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",

@@ -34,17 +34,43 @@ export default function useRoleModEffect(
   adaptiveCard: AdaptiveCard
 ): readonly [(cardElement: HTMLElement) => void, () => void] {
   const modder = useMemo(
-    () => (_, cardElement: HTMLElement) =>
-      setOrRemoveAttributeIfFalseWithUndo(
+    () => (_, cardElement: HTMLElement) => {
+      // Check if the card already has an aria-label from the "speak" property before we derive one.
+      const hasOriginalAriaLabel = !!cardElement.getAttribute('aria-label');
+
+      // If the card doesn't have an aria-label (i.e. no "speak" property was set),
+      // derive one from the card's text content so screen readers can announce it.
+      let undoAriaLabel: (() => void) | undefined;
+
+      if (!hasOriginalAriaLabel) {
+        const textContent = (cardElement.textContent || '').replace(/\s+/gu, ' ').trim();
+
+        if (textContent) {
+          undoAriaLabel = setOrRemoveAttributeIfFalseWithUndo(cardElement, 'aria-label', textContent);
+        }
+      }
+
+      // Only use role="form" when the card has an original aria-label (from "speak" property).
+      // Derived aria-labels should use role="figure" to avoid duplicate form landmarks
+      // when the page also contains the send box <form>.
+      const undoRole = setOrRemoveAttributeIfFalseWithUndo(
         cardElement,
         'role',
         // "form" role requires either "aria-label", "aria-labelledby", or "title".
-        (cardElement.querySelector('button, input, select, textarea') && cardElement.getAttribute('aria-label')) ||
+        (cardElement.querySelector('button, input, select, textarea') &&
+          hasOriginalAriaLabel &&
+          cardElement.getAttribute('aria-label')) ||
           cardElement.getAttribute('aria-labelledby') ||
           cardElement.getAttribute('title')
           ? 'form'
           : 'figure'
-      ),
+      );
+
+      return () => {
+        undoRole();
+        undoAriaLabel?.();
+      };
+    },
     []
   );
 

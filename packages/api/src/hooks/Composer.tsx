@@ -4,6 +4,8 @@ import {
   type LegacyActivityMiddleware,
   type LegacyAttachmentMiddleware
 } from '@msinternal/botframework-webchat-api-middleware/legacy';
+import { singleToArray, type OneOrMany } from '@msinternal/botframework-webchat-base/utils';
+import { useMemoIterable } from '@msinternal/botframework-webchat-react-hooks';
 import { ReduxStoreComposer } from '@msinternal/botframework-webchat-redux-store';
 import {
   clearSuggestedActions,
@@ -27,15 +29,15 @@ import {
   setSendBoxAttachments,
   setSendTimeout,
   setSendTypingIndicator,
-  singleToArray,
   startDictate,
   startSpeakingActivity,
+  startVoiceRecording,
   stopDictate,
   stopSpeakingActivity,
+  stopVoiceRecording,
   submitSendBox,
   type DirectLineJSBotConnection,
   type GlobalScopePonyfill,
-  type OneOrMany,
   type WebChatActivity
 } from 'botframework-webchat-core';
 import PropTypes from 'prop-types';
@@ -48,6 +50,7 @@ import errorBoxTelemetryPolymiddleware from '../errorBox/errorBoxTelemetryPolymi
 import PrecompiledGlobalize from '../external/PrecompiledGlobalize';
 import usePonyfill from '../hooks/usePonyfill';
 import createActivityPolymiddlewareFromLegacy from '../legacy/createActivityPolymiddlewareFromLegacy';
+import createAvatarPolymiddlewareFromLegacy from '../legacy/createAvatarPolymiddlewareFromLegacy';
 import getAllLocalizedStrings from '../localization/getAllLocalizedStrings';
 import { SendBoxMiddlewareProvider, type SendBoxMiddleware } from '../middleware/SendBoxMiddleware';
 import {
@@ -63,6 +66,7 @@ import ActivityTypingComposer from '../providers/ActivityTyping/ActivityTypingCo
 import CapabilitiesComposer from '../providers/Capabilities/CapabilitiesComposer';
 import GroupActivitiesComposer from '../providers/GroupActivities/GroupActivitiesComposer';
 import PonyfillComposer from '../providers/Ponyfill/PonyfillComposer';
+import { SpeechToSpeechComposer } from '../providers/SpeechToSpeech/SpeechToSpeechComposer';
 import StyleOptionsComposer from '../providers/StyleOptions/StyleOptionsComposer';
 import { type ActivityStatusMiddleware, type RenderActivityStatus } from '../types/ActivityStatusMiddleware';
 import AttachmentForScreenReaderMiddleware from '../types/AttachmentForScreenReaderMiddleware';
@@ -84,6 +88,7 @@ import Tracker from './internal/Tracker';
 import WebChatAPIContext, { type WebChatAPIContextType } from './internal/WebChatAPIContext';
 import WebChatReduxContext, { useDispatch } from './internal/WebChatReduxContext';
 import defaultSelectVoice from './internal/defaultSelectVoice';
+import useVoiceHandlers from './internal/useVoiceHandlers';
 import activityFallbackPolymiddleware from './middleware/activityFallbackPolymiddleware';
 import applyMiddleware, {
   forLegacyRenderer as applyMiddlewareForLegacyRenderer,
@@ -209,14 +214,17 @@ function mergeStringsOverrides(localizedStrings, language, overrideLocalizedStri
 
 type ComposerCoreProps = Readonly<{
   /**
-   * @deprecated The `activityMiddleware` prop is being deprecated, please use `polymiddleware` instead. This prop will be removed on or after 2027-08-21.
+   * @deprecated Use `polymiddleware` instead. The `activityMiddleware` prop is being deprecated, please use `polymiddleware` instead. This prop will be removed on or after 2027-08-21.
    */
-  activityMiddleware?: OneOrMany<LegacyActivityMiddleware>;
-  activityStatusMiddleware?: OneOrMany<ActivityStatusMiddleware>;
-  attachmentForScreenReaderMiddleware?: OneOrMany<AttachmentForScreenReaderMiddleware>;
-  attachmentMiddleware?: OneOrMany<LegacyAttachmentMiddleware>;
-  avatarMiddleware?: OneOrMany<AvatarMiddleware>;
-  cardActionMiddleware?: OneOrMany<CardActionMiddleware>;
+  activityMiddleware?: OneOrMany<LegacyActivityMiddleware> | undefined;
+  activityStatusMiddleware?: OneOrMany<ActivityStatusMiddleware> | undefined;
+  attachmentForScreenReaderMiddleware?: OneOrMany<AttachmentForScreenReaderMiddleware> | undefined;
+  attachmentMiddleware?: OneOrMany<LegacyAttachmentMiddleware> | undefined;
+  /**
+   * @deprecated Use `polymiddleware` instead. The `avatarMiddleware` prop is being deprecated, please use `polymiddleware` instead. This prop will be removed on or after 2028-03-16.
+   */
+  avatarMiddleware?: OneOrMany<AvatarMiddleware> | undefined;
+  cardActionMiddleware?: OneOrMany<CardActionMiddleware> | undefined;
   children?: ReactNode | ((context: ContextOf<React.Context<WebChatAPIContextType>>) => ReactNode);
   dir?: string;
   directLine: DirectLineJSBotConnection;
@@ -232,9 +240,9 @@ type ComposerCoreProps = Readonly<{
     quality: number
   ) => Promise<URL>;
   grammars?: any;
-  groupActivitiesMiddleware?: OneOrMany<GroupActivitiesMiddleware>;
+  groupActivitiesMiddleware?: OneOrMany<GroupActivitiesMiddleware> | undefined;
   locale?: string;
-  polymiddleware?: readonly Polymiddleware[];
+  polymiddleware?: readonly Polymiddleware[] | undefined;
   onTelemetry?: (event: TelemetryMeasurementEvent) => void;
   overrideLocalizedStrings?: LocalizedStrings | ((strings: LocalizedStrings, language: string) => LocalizedStrings);
   renderMarkdown?: (
@@ -242,13 +250,13 @@ type ComposerCoreProps = Readonly<{
     newLineOptions: { markdownRespectCRLF: boolean },
     linkOptions: { externalLinkAlt: string }
   ) => string;
-  scrollToEndButtonMiddleware?: OneOrMany<ScrollToEndButtonMiddleware>;
+  scrollToEndButtonMiddleware?: OneOrMany<ScrollToEndButtonMiddleware> | undefined;
   selectVoice?: (voices: (typeof window.SpeechSynthesisVoice)[], activity: WebChatActivity) => void;
   sendBoxMiddleware?: readonly SendBoxMiddleware[] | undefined;
   sendBoxToolbarMiddleware?: readonly SendBoxToolbarMiddleware[] | undefined;
   sendTypingIndicator?: boolean;
-  toastMiddleware?: OneOrMany<ToastMiddleware>;
-  typingIndicatorMiddleware?: OneOrMany<TypingIndicatorMiddleware>;
+  toastMiddleware?: OneOrMany<ToastMiddleware> | undefined;
+  typingIndicatorMiddleware?: OneOrMany<TypingIndicatorMiddleware> | undefined;
   /**
    * Sets the state of the UI.
    *
@@ -264,11 +272,11 @@ type ComposerCoreProps = Readonly<{
 }>;
 
 const ComposerCore = ({
-  activityMiddleware,
+  activityMiddleware: activityMiddlewareFromProps,
   activityStatusMiddleware,
   attachmentForScreenReaderMiddleware,
   attachmentMiddleware,
-  avatarMiddleware,
+  avatarMiddleware: avatarMiddlewareFromProps,
   cardActionMiddleware,
   children,
   dir,
@@ -276,7 +284,7 @@ const ComposerCore = ({
   disabled,
   downscaleImageToDataURL,
   grammars,
-  groupActivitiesMiddleware,
+  groupActivitiesMiddleware: groupActivitiesMiddlewareFromProps,
   locale,
   onTelemetry,
   overrideLocalizedStrings,
@@ -297,6 +305,7 @@ const ComposerCore = ({
   const [styleOptions] = useStyleOptions();
   const dispatch = useDispatch();
   const telemetryDimensionsRef = useRef({});
+  const [voiceHandlers] = useVoiceHandlers();
 
   const patchedDir = useMemo(() => (dir === 'ltr' || dir === 'rtl' ? dir : 'auto'), [dir]);
   const patchedGrammars = useMemo(() => grammars || [], [grammars]);
@@ -366,6 +375,15 @@ const ComposerCore = ({
       ),
     [dispatch]
   );
+
+  const startVoice = useCallback(() => {
+    dispatch(startVoiceRecording());
+  }, [dispatch]);
+
+  const stopVoice = useCallback(() => {
+    voiceHandlers.forEach(handler => handler.stopAllAudio());
+    dispatch(stopVoiceRecording());
+  }, [dispatch, voiceHandlers]);
 
   const patchedLocalizedStrings = useMemo(
     () => mergeStringsOverrides(getAllLocalizedStrings()[normalizeLanguage(locale)], locale, overrideLocalizedStrings),
@@ -453,14 +471,18 @@ const ComposerCore = ({
     [attachmentMiddleware]
   );
 
-  const patchedAvatarRenderer = useMemo(
-    () =>
-      applyMiddlewareForRenderer(
-        'avatar',
-        { strict: false },
-        ...singleToArray(avatarMiddleware),
-        () => () => () => false
-      )({}),
+  const groupActivitiesMiddleware = useMemoIterable<readonly GroupActivitiesMiddleware[] | undefined>(
+    () => Object.freeze(singleToArray(groupActivitiesMiddlewareFromProps)),
+    [groupActivitiesMiddlewareFromProps]
+  );
+
+  const avatarMiddleware = useMemoIterable<readonly AvatarMiddleware[]>(
+    () => singleToArray(avatarMiddlewareFromProps),
+    [avatarMiddlewareFromProps]
+  );
+
+  const polymiddlewareForLegacyAvatarMiddleware = useMemo<Polymiddleware | undefined>(
+    () => createAvatarPolymiddlewareFromLegacy(...avatarMiddleware),
     [avatarMiddleware]
   );
 
@@ -505,22 +527,48 @@ const ComposerCore = ({
     [scrollToEndButtonMiddleware]
   );
 
-  const polymiddlewareForLegacyActivityMiddleware = useMemo<readonly Polymiddleware[]>(
-    () => Object.freeze([createActivityPolymiddlewareFromLegacy(...singleToArray(activityMiddleware))]),
+  const activityMiddleware = useMemoIterable<readonly LegacyActivityMiddleware[]>(
+    () => singleToArray(activityMiddlewareFromProps),
+    [activityMiddlewareFromProps]
+  );
+
+  const polymiddlewareForLegacyActivityMiddleware = useMemo<Polymiddleware | undefined>(
+    () => createActivityPolymiddlewareFromLegacy(...activityMiddleware),
     [activityMiddleware]
   );
 
-  const polymiddleware = useMemo<readonly Polymiddleware[]>(
+  const polymiddleware = useMemoIterable<readonly Polymiddleware[]>(
     () =>
       Object.freeze([
         // Error box telemetry polymiddleware is special and has a much higher priority.
         // This guarantees telemetry is always emitted for exception and no other polymiddleware can override this behavior.
         errorBoxTelemetryPolymiddleware,
-        ...(polymiddlewareFromProps || []),
-        ...polymiddlewareForLegacyActivityMiddleware,
+
+        // # Why render legacy middleware before polymiddleware?
+        //
+        // - Legacy middleware should have high priority than defaults
+        // - Default middleware will be upgraded to polymiddleware, however, they should have lower priority
+        // - Default middleware are implemented in the `component` package, and passed via `polymiddleware` props
+        //   - They are UI, cannot be implemented in `api` package
+        //
+        // We have a few way out, either one of the followings:
+        //
+        // - Add a new `lowPriorityPolymiddleware` props for default polymiddleware, so we can put them after legacy
+        //   - We don't want any special treatments or any prioritization system
+        // - We put the upgrade logics inside both `api` and `component` package
+        //   - `component` will upgrade legacy to polymiddleware and prioritize properly
+        //   - Spaghetti code and it is difficult to test the logic in `api` package
+        // - We always render legacy middleware before polymiddleware
+        //   - Default middleware are polymiddleware, has lower priority than legacy
+        //
+        // The simplest and logical move is #3: render legacy middleware before polymiddleware.
+
+        ...(polymiddlewareForLegacyActivityMiddleware ? [polymiddlewareForLegacyActivityMiddleware] : []),
+        ...(polymiddlewareForLegacyAvatarMiddleware ? [polymiddlewareForLegacyAvatarMiddleware] : []),
+        ...(polymiddlewareFromProps ?? []),
         activityFallbackPolymiddleware
       ]),
-    [polymiddlewareForLegacyActivityMiddleware, polymiddlewareFromProps]
+    [polymiddlewareForLegacyActivityMiddleware, polymiddlewareForLegacyAvatarMiddleware, polymiddlewareFromProps]
   );
 
   /**
@@ -541,7 +589,6 @@ const ComposerCore = ({
       activityStatusRenderer: patchedActivityStatusRenderer,
       attachmentForScreenReaderRenderer: patchedAttachmentForScreenReaderRenderer,
       attachmentRenderer: patchedAttachmentRenderer,
-      avatarRenderer: patchedAvatarRenderer,
       dir: patchedDir,
       directLine,
       downscaleImageToDataURL,
@@ -554,6 +601,8 @@ const ComposerCore = ({
       scrollToEndButtonRenderer,
       selectVoice: patchedSelectVoice,
       sendTypingIndicator,
+      startVoice,
+      stopVoice,
       telemetryDimensionsRef,
       toastRenderer: patchedToastRenderer,
       trackDimension,
@@ -573,7 +622,6 @@ const ComposerCore = ({
       patchedActivityStatusRenderer,
       patchedAttachmentForScreenReaderRenderer,
       patchedAttachmentRenderer,
-      patchedAvatarRenderer,
       patchedDir,
       patchedGrammars,
       patchedLocalizedStrings,
@@ -583,6 +631,8 @@ const ComposerCore = ({
       renderMarkdown,
       scrollToEndButtonRenderer,
       sendTypingIndicator,
+      startVoice,
+      stopVoice,
       telemetryDimensionsRef,
       trackDimension,
       uiState,
@@ -599,9 +649,11 @@ const ComposerCore = ({
             <ActivityTypingComposer>
               <SendBoxMiddlewareProvider middleware={sendBoxMiddleware || EMPTY_ARRAY}>
                 <SendBoxToolbarMiddlewareProvider middleware={sendBoxToolbarMiddleware || EMPTY_ARRAY}>
-                  <GroupActivitiesComposer groupActivitiesMiddleware={singleToArray(groupActivitiesMiddleware)}>
+                  <GroupActivitiesComposer groupActivitiesMiddleware={groupActivitiesMiddleware}>
                     <PolymiddlewareComposer polymiddleware={polymiddleware}>
-                      {typeof children === 'function' ? children(context) : children}
+                      <SpeechToSpeechComposer>
+                        {typeof children === 'function' ? children(context) : children}
+                      </SpeechToSpeechComposer>
                     </PolymiddlewareComposer>
                   </GroupActivitiesComposer>
                   <ActivitySendStatusTelemetryComposer />

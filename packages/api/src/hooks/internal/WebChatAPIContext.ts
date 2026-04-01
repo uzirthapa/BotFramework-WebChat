@@ -11,7 +11,6 @@ import { createContext } from 'react';
 
 import { RenderActivityStatus } from '../../types/ActivityStatusMiddleware';
 import { AttachmentForScreenReaderComponentFactory } from '../../types/AttachmentForScreenReaderMiddleware';
-import { AvatarComponentFactory } from '../../types/AvatarMiddleware';
 import { PerformCardAction } from '../../types/CardActionMiddleware';
 import { GroupActivities } from '../../types/GroupActivitiesMiddleware';
 import LocalizedStrings from '../../types/LocalizedStrings';
@@ -25,7 +24,6 @@ export type WebChatAPIContextType = {
   activityStatusRenderer: RenderActivityStatus;
   attachmentForScreenReaderRenderer?: AttachmentForScreenReaderComponentFactory;
   attachmentRenderer?: LegacyRenderAttachment;
-  avatarRenderer: AvatarComponentFactory;
   clearSuggestedActions?: () => void;
   dir?: string;
   directLine?: DirectLineJSBotConnection;
@@ -71,8 +69,10 @@ export type WebChatAPIContextType = {
   setSendTimeout?: (timeout: number) => void;
   startDictate?: () => void;
   startSpeakingActivity?: () => void;
+  startVoice?: () => void;
   stopDictate?: () => void;
   stopSpeakingActivity?: () => void;
+  stopVoice?: () => void;
   submitSendBox?: (method?: string, { channelData }?: { channelData: any }) => void;
   telemetryDimensionsRef?: React.Ref<any>;
   toastRenderer?: RenderToast;

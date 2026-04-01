@@ -313,11 +313,17 @@ const DEFAULT_OPTIONS: Required<StyleOptions> = {
   // Speech recognition
   speechRecognitionContinuous: false,
 
+  partGroupDefaultOpen: true,
+  referenceListDefaultOpen: true,
+
   groupActivitiesBy: ['sender', 'status', 'part'],
 
   // Send box attachment bar
   sendBoxAttachmentBarMaxHeight: 114,
-  sendBoxAttachmentBarMaxThumbnail: 3
+  sendBoxAttachmentBarMaxThumbnail: 3,
+
+  // Speech-to-speech options
+  showMicrophoneButton: 'auto'
 };
 
 export default DEFAULT_OPTIONS;
